@@ -63,6 +63,15 @@
 
         <li>
 
+            <a class="apidocElementLiA" href="#apidoc.element.mariasql.mariasql">
+            function <span class="apidocSignatureSpan"></span>mariasql
+            <span class="apidocSignatureSpan">(config)</span>
+            </a>
+
+        </li>
+
+        <li>
+
             <a class="apidocElementLiA" href="#apidoc.element.mariasql.escape">
             function <span class="apidocSignatureSpan">mariasql.</span>escape
             <span class="apidocSignatureSpan">()</span>
@@ -193,6 +202,75 @@
 
 
     <h2>
+        <a href="#apidoc.element.mariasql.mariasql" id="apidoc.element.mariasql.mariasql">
+        function <span class="apidocSignatureSpan"></span>mariasql
+        <span class="apidocSignatureSpan">(config)</span>
+        </a>
+    </h2>
+    <ul>
+    <li>description and source-code<pre class="apidocCodePre">function Client(config) {
+  if (!(this instanceof Client))
+    return new Client(config);
+
+  EventEmitter.call(this);
+
+  this._handle = null;
+
+  if (typeof config === &#x27;object&#x27; &#x26;&#x26; config !== null)
+    this._config = config;
+  else
+    this._config = {};
+
+  var queryCache;
+  var ncache = 30;
+  if (typeof this._config.queryCache === &#x27;number&#x27;)
+    ncache = this._config.queryCache;
+  else if (typeof this._config.queryCache === &#x27;object&#x27;)
+    queryCache = this._config.queryCache; // Assume lru-cache instance
+  if (this._config.queryCache !== false &#x26;&#x26; !queryCache)
+    queryCache = new LRU({ max: ncache, dispose: EMPTY_LRU_FN });
+
+  this._req = undefined;
+  this._queue = [];
+  this._queryCache = queryCache;
+  this._handleClosing = false;
+  this._tmrInactive = undefined;
+  this._tmrPingWaitRes = undefined;
+  this.connecting = false;
+  this.connected = false;
+  this.closing = false;
+  this.threadId = undefined;
+
+  if (this._config.threadId === false)
+    return;
+
+  // XXX: hack to get thread ID first before any other queries
+  var self = this;
+  this._firstQuery = {
+    str: &#x27;SELECT CONNECTION_ID()&#x27;,
+    cb: function(err, rows) {
+      if (err) {
+        self.emit(&#x27;error&#x27;, err);
+        self.close(true);
+        return;
+      }
+      self.threadId = rows[0][0];
+      self.connecting = false;
+      self.connected = true;
+      self.emit(&#x27;ready&#x27;);
+    },
+    result: undefined,
+    results: undefined,
+    needMetadata: false,
+    needColumns: false
+  };
+}</pre></li>
+    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    </ul>
+
+
+
+    <h2>
         <a href="#apidoc.element.mariasql.escape" id="apidoc.element.mariasql.escape">
         function <span class="apidocSignatureSpan">mariasql.</span>escape
         <span class="apidocSignatureSpan">()</span>
@@ -200,7 +278,22 @@
     </h2>
     <ul>
     <li>description and source-code<pre class="apidocCodePre">escape = function () { [native code] }</pre></li>
-    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+Client.prototype.lastInsertId = function() {
+  this._initHandle();
+  return this._handle.lastInsertId();
+};
+
+Client.prototype.escape = function(str) {
+  this._initHandle();
+  return this._handle.<span class="apidocCodeKeywordSpan">escape</span>(str);
+};
+
+Client.prototype.serverVersion = function() {
+  this._initHandle();
+  return this._handle.serverVersion();
+};
+...</pre></li>
     </ul>
 
 
@@ -228,7 +321,23 @@
     </h2>
     <ul>
     <li>description and source-code<pre class="apidocCodePre">version = function () { [native code] }</pre></li>
-    <li>example usage<pre class="apidocCodePre">n/a</pre></li>
+    <li>example usage<pre class="apidocCodePre">...
+var DEFAULT_PASSWORD = process.env.DB_PASS || &#x27;&#x27;;
+
+function NOOP(err) { assert.strictEqual(err, null); }
+
+var tests = [
+{ what: &#x27;Client::version()&#x27;,
+  run: function() {
+    var version = Client.<span class="apidocCodeKeywordSpan">version</span>();
+    assert.strictEqual(typeof version, &#x27;string&#x27;);
+    assert.notStrictEqual(version.length, 0);
+    next();
+  }
+},
+{ what: &#x27;Client::escape()&#x27;,
+  run: function() {
+...</pre></li>
     </ul>
 
 
